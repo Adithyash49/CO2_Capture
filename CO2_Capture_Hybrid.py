@@ -102,16 +102,18 @@ with tab1:
     # KPIs — 2 decimal places
     c1,c2,c3,c4,c5 = st.columns(5)
     c1.metric("Capture Rate", f"{cap:.2f}%",
-              delta=f"{cap-85:.2f}% vs 85% target")
+              delta=f"{cap-90:.2f}% vs 90% target")
     c2.metric("⚛️ Physics",   f"{qreb_ph:.2f} GJ/t", help="Simplified Oexmann R²=0.82")
     c3.metric("🤖 Pure ML",   f"{qreb_ml:.2f} GJ/t", help="XGBoost surrogate R²=0.95")
     c4.metric("🔀 Hybrid A",  f"{qreb_A:.2f} GJ/t",  help="Physics + ML correction R²=0.97")
     c5.metric("⚙️ Hybrid C",  f"{qreb_C:.2f} GJ/t",  help="ML-predicted working capacity")
 
-    if cap >= 85:
-        st.success(f'✅ Capture target met: {cap:.2f}% ≥ 85%')
+    if cap >= 90:
+        st.success(f'✅ Capture target met: {cap:.2f}% ≥ 90%')
+    elif cap >= 85:
+        st.warning(f'🟡 Close but below 90% target — current: {cap:.2f}%')
     else:
-        st.warning(f'⚠️ Below 85% target — current: {cap:.2f}%')
+        st.error(f'⚠️ Well below 90% target — current: {cap:.2f}%')
 
     st.divider()
     left, right = st.columns(2)
@@ -166,34 +168,39 @@ with tab1:
         fig_u.update_yaxes(gridcolor='#333')
         st.plotly_chart(fig_u,use_container_width=True)
 
-    # Architecture C insight
+    # Architecture C insight — optional toggle
     st.divider()
-    st.markdown("#### 🔍 Architecture C — What ML discovered about the solvent")
-    a1,a2,a3 = st.columns(3)
-    a1.metric("Physics assumed delta_α","0.20 (fixed)")
-    a2.metric("ML predicted delta_α",f"{da_ml:.2f}")
-    a3.metric("Difference",f"{da_ml-0.20:+.2f}",delta_color="off")
-
-    if da_ml > 0.22:
-        st.markdown(
-            f'<div class="insight-green">✅ <b>Solvent performing BETTER than assumed.</b>'
-            f' Real working capacity ({da_ml:.2f}) &gt; assumed (0.20).'
-            f' Each mole of MEA absorbs more CO₂ than expected.'
-            f' Physics would overestimate Q_reboiler — Hybrid C gives the accurate lower value.</div>',
-            unsafe_allow_html=True)
-    elif da_ml < 0.18:
-        st.markdown(
-            f'<div class="insight-red">⚠️ <b>Solvent performing WORSE than assumed.</b>'
-            f' Real working capacity ({da_ml:.2f}) &lt; assumed (0.20).'
-            f' Possible causes: high absorber temperature degrading MEA, solvent near loading limit.'
-            f' Real Q_reboiler is higher than physics predicts.</div>',
-            unsafe_allow_html=True)
-    else:
-        st.markdown(
-            f'<div class="insight-blue">ℹ️ <b>Working capacity close to assumed value.</b>'
-            f' delta_α = {da_ml:.2f} ≈ assumed 0.20.'
-            f' Physics and data agree well at these conditions.</div>',
-            unsafe_allow_html=True)
+    show_arch_c = st.toggle("🔍 Show Architecture C — ML working capacity analysis", value=False)
+    if show_arch_c:
+        st.markdown("#### Architecture C — What ML discovered about the solvent")
+        a1,a2,a3 = st.columns(3)
+        a1.metric("Physics assumed delta_α","0.20 (fixed)")
+        a2.metric("ML predicted delta_α",f"{da_ml:.2f}")
+        a3.metric("Difference",f"{da_ml-0.20:+.2f}",delta_color="off")
+        st.caption(
+            "delta_α = working capacity = how much CO₂ each mole of MEA picks up per cycle. "
+            "Physics assumes this is always 0.20. Architecture C uses ML to predict the real value "
+            "from your operating conditions — revealing whether the solvent is over or under-performing."
+        )
+        if da_ml > 0.22:
+            st.markdown(
+                f'<div class="insight-green">✅ <b>Solvent performing BETTER than assumed.</b>'
+                f' Real working capacity ({da_ml:.2f}) &gt; assumed (0.20).'
+                f' Physics overestimates Q_reboiler — Hybrid C gives the accurate lower value.</div>',
+                unsafe_allow_html=True)
+        elif da_ml < 0.18:
+            st.markdown(
+                f'<div class="insight-orange">🟡 <b>Working capacity lower than assumed.</b>'
+                f' delta_α = {da_ml:.2f} vs assumed 0.20.'
+                f' This is normal at high temperatures or high L/G ratios where the solvent'
+                f' loading approaches its limit. Hybrid C accounts for this in its prediction.</div>',
+                unsafe_allow_html=True)
+        else:
+            st.markdown(
+                f'<div class="insight-blue">ℹ️ <b>Working capacity close to assumed value.</b>'
+                f' delta_α = {da_ml:.2f} ≈ assumed 0.20.'
+                f' Physics and data agree well at these conditions.</div>',
+                unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════
@@ -307,13 +314,13 @@ with tab3:
          "🔴 Capture rate LOW",
          f"Capture={cap:.2f}%. EU CCS target ≥90%. Increase L/G or amine concentration.",
          "red"),
-        (80 <= cap < 85,
-         "🟡 Capture below 85% constraint",
-         f"Capture={cap:.2f}%. Below 85% operating constraint. Consider increasing L/G or amine.",
+        (80 <= cap < 90,
+         "🟡 Capture below 90% target",
+         f"Capture={cap:.2f}%. Below the 90% EU CCS target. Consider increasing L/G or amine.",
          "orange"),
-        (cap >= 85,
-         "✅ Capture meets target",
-         f"Capture={cap:.2f}% meets the 85% operating constraint.",
+        (cap >= 90,
+         "✅ Capture meets 90% target",
+         f"Capture={cap:.2f}% meets the ≥90% EU CCS target.",
          "green"),
         (qreb_A > 5.0,
          "🔴 Q_reboiler VERY HIGH",
@@ -377,11 +384,10 @@ with tab3:
 # ══════════════════════════════════════════════
 with tab4:
     st.markdown("#### ⚡ Find Optimal Operating Conditions")
-    st.info("Calls the surrogate model to minimise GWP — far faster than running Aspen Plus.")
 
     co1, co2, co3 = st.columns(3)
     with co1:
-        min_cap_c = st.slider("Minimum capture rate (%)", 70, 95, 85, 1,
+        min_cap_c = st.slider("Minimum capture rate (%)", 70, 95, 90, 1,
                               help="Optimiser penalises solutions below this threshold")
     with co2:
         grid_opt = st.selectbox("Grid for optimisation", list(EF.keys()), index=0)

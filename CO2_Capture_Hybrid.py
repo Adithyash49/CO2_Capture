@@ -87,11 +87,12 @@ gwp_tot   = gwp_steam+gwp_elec+gwp_mea+gwp_const
 net       = 1000-gwp_tot
 
 # ── TABS ──────────────────────────────────────────────────────────────────────
-tab1,tab2,tab3,tab4 = st.tabs([
+tab1,tab2,tab3,tab4,tab5 = st.tabs([
     '🎯 Predictions',
     '🌿 LCA & Environment',
     '💡 Insights',
-    '⚡ Optimisation'
+    '⚡ Optimisation',
+    '📚 Knowledge Base'
 ])
 
 
@@ -168,39 +169,30 @@ with tab1:
         fig_u.update_yaxes(gridcolor='#333')
         st.plotly_chart(fig_u,use_container_width=True)
 
-    # Architecture C insight — optional toggle
+    # How to achieve ≥90% capture
     st.divider()
-    show_arch_c = st.toggle("🔍 Show Architecture C — ML working capacity analysis", value=False)
-    if show_arch_c:
-        st.markdown("#### Architecture C — What ML discovered about the solvent")
-        a1,a2,a3 = st.columns(3)
-        a1.metric("Physics assumed delta_α","0.20 (fixed)")
-        a2.metric("ML predicted delta_α",f"{da_ml:.2f}")
-        a3.metric("Difference",f"{da_ml-0.20:+.2f}",delta_color="off")
-        st.caption(
-            "delta_α = working capacity = how much CO₂ each mole of MEA picks up per cycle. "
-            "Physics assumes this is always 0.20. Architecture C uses ML to predict the real value "
-            "from your operating conditions — revealing whether the solvent is over or under-performing."
+    st.markdown("#### 🎯 How to achieve ≥90% Capture Rate")
+    st.caption("Use these target ranges on the sidebar sliders to reach the EU CCS target")
+    g1,g2 = st.columns(2)
+    with g1:
+        st.markdown(
+            f"| Parameter | Current | Target for ≥90% | Direction |\n"
+            f"|---|---|---|---|\n"
+            f"| MEA Concentration | {amine:.1f} wt% | **32–38 wt%** | ⬆ Increase |\n"
+            f"| L/G Ratio | {lg:.1f} mol/mol | **3.5–5.0** | ⬆ Increase |\n"
+            f"| Absorber T | {t_abs:.1f} °C | **38–45 °C** | ⬇ Lower if above 45 |\n"
+            f"| Stripper P | {p_str:.2f} bar | **1.7–2.2 bar** | ⬆ Increase |\n"
+            f"| Flue CO₂ | {flue:.1f} vol% | **10–13 vol%** | ⬆ Higher helps |"
         )
-        if da_ml > 0.22:
-            st.markdown(
-                f'<div class="insight-green">✅ <b>Solvent performing BETTER than assumed.</b>'
-                f' Real working capacity ({da_ml:.2f}) &gt; assumed (0.20).'
-                f' Physics overestimates Q_reboiler — Hybrid C gives the accurate lower value.</div>',
-                unsafe_allow_html=True)
-        elif da_ml < 0.18:
-            st.markdown(
-                f'<div class="insight-orange">🟡 <b>Working capacity lower than assumed.</b>'
-                f' delta_α = {da_ml:.2f} vs assumed 0.20.'
-                f' This is normal at high temperatures or high L/G ratios where the solvent'
-                f' loading approaches its limit. Hybrid C accounts for this in its prediction.</div>',
-                unsafe_allow_html=True)
+    with g2:
+        gap = max(0, 90 - cap)
+        if gap == 0:
+            st.markdown('<div class="insight-green">✅ <b>Already at ≥90% capture.</b> No changes needed.</div>', unsafe_allow_html=True)
+        elif gap < 5:
+            st.markdown(f'<div class="insight-orange">🟡 <b>Only {gap:.1f}% away from target.</b> Try increasing L/G by 0.5 or MEA by 2 wt%.</div>', unsafe_allow_html=True)
         else:
-            st.markdown(
-                f'<div class="insight-blue">ℹ️ <b>Working capacity close to assumed value.</b>'
-                f' delta_α = {da_ml:.2f} ≈ assumed 0.20.'
-                f' Physics and data agree well at these conditions.</div>',
-                unsafe_allow_html=True)
+            st.markdown(f'<div class="insight-red">🔴 <b>{gap:.1f}% gap to close.</b> Increase L/G to ≥3.5 first — strongest lever for capture rate. Then raise amine to 35 wt% and lower absorber T to 40°C.</div>', unsafe_allow_html=True)
+        st.markdown("**Why these changes work:**\n- **Higher L/G** → more solvent contacts flue gas → more CO₂ absorbed\n- **Higher amine** → more MEA available for reaction\n- **Lower T** → CO₂ more soluble at lower temperature (Henry's Law)\n- **Higher P** → better regeneration → leaner solvent")
 
 
 # ══════════════════════════════════════════════
@@ -534,4 +526,154 @@ with tab4:
 
         **Why results persist:** stored in session state — moving sliders will NOT clear results.
         Click Run again only if you want a fresh search with new constraints.
+        """)
+
+
+# ══════════════════════════════════════════════
+# TAB 5 — KNOWLEDGE BASE
+# ══════════════════════════════════════════════
+with tab5:
+    kb1, kb2 = st.tabs(['🔬 Theory & Process', '🏭 Plants & Commercial'])
+
+    with kb1:
+        st.markdown("#### How MEA Post-Combustion Capture Works")
+        st.markdown("""
+**The two-column process:**
+
+1. **Absorber column** — Flue gas rises from the bottom. MEA solution flows down from the top.
+   CO₂ reacts with MEA at 40–60°C and transfers from gas to liquid phase.
+   Cleaned flue gas exits the top. CO₂-rich solvent collects at the bottom.
+
+2. **Stripper column** — Rich solvent is heated to 120°C in the reboiler.
+   Heat breaks the CO₂-MEA bond and releases pure CO₂ from the top.
+   Lean solvent returns to the absorber. CO₂ is compressed to 110 bar for storage.
+
+**The chemical reaction:**
+```
+Absorption (40–60°C):   2 MEA + CO₂ + H₂O  →  (MEAH⁺)₂CO₃
+Regeneration (120°C):   (MEAH⁺)₂CO₃        →  2 MEA + CO₂ + H₂O
+```
+        """)
+        st.divider()
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### Key Performance Indicators")
+            st.markdown("""
+| Indicator | Industry target | Why it matters |
+|---|---|---|
+| Capture rate | ≥ 90% | EU CCS directive requirement |
+| Q_reboiler | < 4.0 GJ/t | Main operating cost driver |
+| Solvent loss | < 1.5 kg/t CO₂ | MEA is expensive + toxic |
+| Net CO₂ avoided | > 65% | LCA must be net positive |
+| L/G ratio | 2.5–3.5 mol/mol | Energy-capture sweet spot |
+| Absorber T | 38–45°C | CO₂ solubility optimum |
+            """)
+        with col2:
+            st.markdown("#### Why MEA is Still the Benchmark")
+            st.markdown("""
+Despite decades of research, **30 wt% MEA remains the industry reference solvent** because:
+
+- Well-understood degradation chemistry
+- Validated at multiple large-scale pilots
+- Regulatory datasets available for permitting
+- Fast reaction rate with CO₂
+- Low molecular weight → high mol/mol capacity
+
+**Main drawbacks:**
+- High regeneration energy (3.5–4.5 GJ/t CO₂)
+- Degrades at >120°C → limits stripper temperature
+- Oxidative degradation forms harmful nitrosamines
+- Corrosive at high concentrations (>40 wt%)
+            """)
+        st.divider()
+        st.markdown("#### Energy Breakdown Explanation")
+        st.markdown("""
+The total reboiler duty has three components:
+
+| Component | Typical value | Driven by |
+|---|---|---|
+| Reaction heat | ~1.9 GJ/t (fixed) | Chemistry of CO₂-MEA bond (~85 kJ/mol) |
+| Sensible heat | 1.0–3.0 GJ/t | L/G ratio and temperature difference |
+| Evaporation heat | 0.4–0.8 GJ/t | Stripper pressure (higher P = less evaporation) |
+
+**The U-shape explained:**
+- L/G too LOW → solvent overloaded → poor regeneration → high Q
+- L/G too HIGH → too much liquid to heat from 45°C to 120°C → high sensible heat
+- Sweet spot L/G = 2.5–3.5 minimises the sum of all three components
+        """)
+
+    with kb2:
+        st.markdown("#### Current Commercial & Pilot Plants Worldwide")
+        st.markdown("""
+| Plant | Location | Scale | Solvent | Q_reb (GJ/t) | Capture | Source |
+|---|---|---|---|---|---|---|
+| **Boundary Dam** (SaskPower) | Saskatchewan, Canada | 110 MW — 1 Mt/yr | Shell CANSOLV | ~3.2 | 90% | Commercial since 2014 |
+| **Sleipner** (Equinor) | North Sea, Norway | 1 Mt/yr (storage only) | — | — | 100% saline aquifer | Since 1996 |
+| **TCM Mongstad** | Mongstad, Norway | 12 MW pilot, 0.1 Mt/yr | 30 wt% MEA | 3.5–4.5 | 85–90% | World's largest test centre |
+| **Quest** (Shell) | Alberta, Canada | 1.1 Mt/yr | ADIP-X | ~3.0 | 80% | Commercial since 2015 |
+| **Illinois Basin Decatur** | Illinois, USA | 1 Mt/yr (storage) | — | — | — | IEAGHG reference site |
+| **DTU Amager Bakke** (WtE) | Copenhagen, Denmark | 4 t CO₂/day pilot | 35 wt% MEA | 3.73–4.18 | 85–95% | WtE first — your thesis context |
+| **Aker Carbon MTU** | Global mobile unit | 150 kg CO₂/h | 25–30 wt% MEA | 3.6–3.8 | 90% | Validated 2022 |
+| **Brevik** (Heidelberg Materials) | Brevik, Norway | 400,000 t/yr | AKER | ~3.5 | 50% | First cement CCS, 2024 |
+| **Northern Lights** | Øygarden, Norway | 1.5 Mt/yr storage | — | — | — | CO₂ transport & storage hub |
+        """)
+        st.divider()
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### Typical Commercial Operating Conditions")
+            st.markdown("""
+Based on published data from TCM Mongstad, Aker MTU, and DTU WtE:
+
+| Parameter | Typical range | Best practice |
+|---|---|---|
+| MEA concentration | 25–35 wt% | 30 wt% standard |
+| L/G ratio | 2.0–5.0 mol/mol | 2.5–3.5 optimal |
+| Absorber temperature | 38–55°C | 40–45°C |
+| Stripper pressure | 1.5–2.5 bar | 1.8–2.0 bar |
+| Reboiler temperature | 115–125°C | 120°C |
+| Flue gas CO₂ | 3–15 vol% | 10–14% for coal |
+| Capture rate | 85–95% | ≥90% EU target |
+| Q_reboiler | 3.0–4.5 GJ/t | < 4.0 GJ/t target |
+| Solvent loss | 0.3–2.0 kg/t | < 1.0 kg/t |
+            """)
+        with col2:
+            st.markdown("#### Commercial Value of CO₂ Capture")
+            st.markdown("""
+**Carbon pricing (EU ETS, 2024):**
+- EU ETS carbon price: ~60–80 €/t CO₂
+- 1 Mt/yr plant revenue from avoided penalties: **60–80 M€/yr**
+
+**Cost of capture (CAPEX + OPEX):**
+- Current MEA plants: 50–100 €/t CO₂ captured
+- 2030 target (EU): < 50 €/t CO₂
+- 2050 target: < 30 €/t CO₂
+
+**Main cost drivers (OPEX):**
+- Steam for reboiler: 40–60% of operating cost
+- MEA make-up: 10–20%
+- Electricity (compressor): 15–25%
+
+**Why reducing Q_reboiler matters commercially:**
+- Reducing from 4.0 → 3.5 GJ/t saves **0.5 GJ per tonne CO₂**
+- At 1 Mt/yr scale: saves **500,000 GJ/yr** of steam
+- At natural gas cost (0.03 €/kWh thermal): saves **~4 M€/yr**
+            """)
+        st.divider()
+        st.markdown("#### Why WtE (Waste-to-Energy) is a Priority for CCS")
+        st.markdown('<div class="insight-blue">🏭 <b>WtE plants like Amager Bakke (Copenhagen) are ideal early CCS targets:</b><br>• Flue gas CO₂ = 8–12 vol% — higher than gas turbines (4%) → easier capture<br>• Biogenic fraction of waste (~50%) → CCS becomes <b>carbon negative (BECCS)</b><br>• Located in cities → CO₂ can be used locally (greenhouses, food industry)<br>• Continuous baseload operation → predictable CO₂ stream for capture<br>• EU: ~500 WtE plants → combined potential of 50–100 Mt CO₂/yr avoided</div>', unsafe_allow_html=True)
+        st.divider()
+        st.markdown("#### Future Directions")
+        st.markdown("""
+| Technology | Status | Potential Q_reb | vs MEA |
+|---|---|---|---|
+| Advanced amines (CESAR1, piperazine) | Pilot scale | 2.5–3.2 GJ/t | 20–30% lower |
+| Ionic liquids | Lab scale | 2.0–2.8 GJ/t | 30–40% lower |
+| Membrane contactors | Pilot scale | 2.5–3.5 GJ/t | 15–25% lower |
+| Direct air capture (DAC) | Commercial (Climeworks) | 5–10 GJ/t | Higher — dilute CO₂ |
+| Chemical looping | Pilot scale | 1.5–2.5 GJ/t | 40–50% lower |
+| Solid sorbents | Pilot scale | 2.0–3.0 GJ/t | 25–35% lower |
+
+**MEA remains dominant** because switching requires full re-permitting, new materials certification, and retraining of operators. Hybrid modelling accelerates new solvent adoption by building surrogates that predict performance without running full pilot campaigns.
         """)

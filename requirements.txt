@@ -2,6 +2,12 @@ streamlit
 numpy
 pandas
 scikit-learn
-joblib
 xgboost
+joblib
+plotly
+scipy
+matplotlib
+seaborn
 CoolProp
+SALib
+openpyxl
